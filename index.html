@@ -30,6 +30,7 @@ const tileZ = 18;
 let unwater = false;
 let blockMode = 0;
 let waterTimer = 0;
+let totalVolume;
 
 const terrain = Array.from({ length: gridSize }, (_, x) =>
   Array.from({ length: gridSize }, (_, y) => {
@@ -53,6 +54,7 @@ function windowResized() {
 }
 
 function draw() {
+totalVolume = waterVolume();
   updateWater(Math.min(deltaTime, 50));
   background(0);
 
@@ -95,6 +97,8 @@ if (blockMode === 1) {
 }
 
 text("SPACE: clear water    R: reset terrain", 16, 44);
+text("there is "+totalVolume+" cubic meters of water", 16, 64);
+text( )
 
   text("mizu emu - by @ninew - crescent hackclub - emulator", width-350, height-20);
 }
@@ -359,6 +363,19 @@ function drawWaterfall(x, y) {
 function fillRgb(color) {
   fill(color[0], color[1], color[2]);
 }
+
+function waterVolume() {
+  let volume = 0;
+
+  for (let x = 0; x < gridSize; x++) {
+    for (let y = 0; y < gridSize; y++) {
+      volume += water[x][y];
+    }
+  }
+
+  return volume;
+}
+
 
 function drawMap(x, y, z) {
   const elevation = terrain[x][y];
