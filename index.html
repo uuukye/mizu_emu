@@ -13,10 +13,7 @@
       overflow: hidden;
       background-color: #000000;
     }
-
-    canvas {
-      display: block;
-    }
+    canvas {display: block;}
 
   </style>
 </head>
@@ -54,7 +51,7 @@ function windowResized() {
 }
 
 function draw() {
-totalVolume = waterVolume();
+  totalVolume = waterVolume();
   updateWater(Math.min(deltaTime, 50));
   background(0);
 
@@ -97,7 +94,7 @@ if (blockMode === 1) {
 }
 
 text("SPACE: clear water    R: reset terrain", 16, 44);
-text("there is "+totalVolume+" cubic meters of water", 16, 64);
+text("there is "+floor(totalVolume)+" cubic meters of water", 16, 64);
 
   text("mizu emu - by @ninew - crescent hackclub - emulator", width-350, height-20);
 }
