@@ -6,6 +6,7 @@
   <title>mizu_sim</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/2.3.4/p5.min.js"></script>
   <style>
+
     body {
       margin: 0;
       padding: 0;
@@ -16,6 +17,7 @@
     canvas {
       display: block;
     }
+
   </style>
 </head>
 <body>
@@ -82,26 +84,18 @@ function draw() {
   fill(180);
   textSize(13);
 
-  if (blockMode === 1) {
-    text("BUILD mode: click/drag to add blocks. ('D'-DELETE: delete blocks)", 16, 24);
-  } else if (blockMode === 2) {
-    text("DELETE mode: click/drag to delete blocks. ('B'-BUILD: add blocks)", 16, 24);
-  } else {
-    text("'B'-BUILD: add blocks            'D'-DELETE: delete blocks", 16, 24);
-  }
+if (blockMode === 1) {
+  text("BUILD mode: click/drag to add blocks. Press D for DELETE, W for WATER, or U for SPONGE.", 16, 24);
+} else if (blockMode === 2) {
+  text("DELETE mode: click/drag to remove blocks. Press B for BUILD, W for WATER, or U for SPONGE.", 16, 24);
+} else if (unwater) {
+  text("SPONGE mode: click/drag to absorb water. Press W for WATER, B for BUILD, or D for DELETE.", 16, 24);
+} else {
+  text("WATER mode: click/drag to pour water. Press U for SPONGE, B for BUILD, or D for DELETE.", 16, 24);
+}
 
-  if (blockMode === 0) {
-    if (unwater) {
-      text("SPONGE mode: click/drag to absorb water ('W'-WATER: pour water)", 16, 40);
-    } else {
-      text("WATER mode: click/drag to pour water ('U'-UNWATER: absorb water)", 16, 40);
-    }
-  } else {
-    text("'W'-WATER: pour water            'U'-UNWATER: absorb water", 16, 40);
-  }
+text("SPACE: clear water    R: reset terrain", 16, 44);
 
-  text("press SPACE to clear all water", 16, 56);
-  text("press R to reset terrain", 16, 72);
   text("mizu emu - by @ninew - crescent hackclub - emulator", width-350, height-20);
 }
 
