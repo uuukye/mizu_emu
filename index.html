@@ -90,7 +90,7 @@ function draw() {
     text("'B'-BUILD: add blocks            'D'-DELETE: delete blocks", 16, 24);
   }
 
-  if (blockMode !== 0) {
+  if (blockMode === 0) {
     if (unwater) {
       text("SPONGE mode: click/drag to absorb water ('W'-WATER: pour water)", 16, 40);
     } else {
