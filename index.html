@@ -160,7 +160,7 @@ function draw() {
   text("SPACE: clear water", 16, 110);
   text("R: Reset terrain", 16, 140);
   text("G: Change grid size ("+gridSize+"x"+gridSize+"), will reset all", 16, 170);
-  text("M: Change viscosity (Change fluid)", 16, 220);
+  text("M: Change viscosity (Change fluid, use right and left arrow keys)", 16, 220);
   text("B: Build blocks on terrain", 16, 250);
   text("D: Delete blocks on terrain", 16, 280);
   text("U: Absorb fluid", 16, 310);
@@ -170,7 +170,7 @@ function draw() {
   text("Press A for guide", 16, 110);
   }
 
-  text("mizu emu - by @ninew - crescent hackclub - emulator", width-370, height-20);
+  text("mizu emu - by @ninew - crescent hackclub - emulator", width-500, height-20);
   if (menu) {
     drawCube(width-260, 230, 20, fluidColors[selection]);
 
