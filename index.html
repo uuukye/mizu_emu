@@ -19,26 +19,33 @@
 </head>
 <body>
 <script>
-const gridSize = 18;
-const tileW = 36;
-const tileH = 28;
-const tileZ = 18;
-
+const gridSizes = [8, 12, 18, 24];
+let gridIndex = 2;
+let gridSize = gridSizes[gridIndex];
+let tileW = 36;
+let tileH = 28;
+let tileZ = 18;
+let offsetY = 0;
 let unwater = false;
 let blockMode = 0;
 let waterTimer = 0;
 let totalVolume;
-let menu=false;
-let selection=2;
-let unpress=true;
+let menu = false;
+let selection = 2;
+let guide=false;
 
-const terrain = Array.from({ length: gridSize }, (_, x) =>
-  Array.from({ length: gridSize }, (_, y) => {
-    const center = (gridSize - 1) / 2;
-    const dist = Math.hypot(x - center, y - center);
-    return Math.min(2, Math.floor(Math.max(0, dist - 1) / 3.7));
-  })
-);
+const viscosityValues = [0.02, 0.33, 1, 40, 100, 8000];
+const fluidColors = [
+  [185, 190, 195],
+  [220, 70, 80],
+  [19, 126, 157],
+  [148, 160, 43],
+  [178, 101, 39],
+  [245, 195, 35]
+];
+const fluidOpacity = [110, 135, 235, 255, 255, 255];
+
+let terrain = createTerrain(gridSize);
 
 let water = Array.from(
   { length: gridSize },
@@ -50,12 +57,57 @@ let waterVisible = Array.from(
   () => Array(gridSize).fill(false)
 );
 
+function createTerrain(size) {
+  return Array.from({ length: size }, (_, x) =>
+    Array.from({ length: size }, (_, y) => {
+      const center = (size - 1) / 2;
+      const dist = Math.hypot(x - center, y - center);
+      return Math.min(2, Math.floor(Math.max(0, dist - 1) / (3.7 * size / 18)));
+    })
+  );
+}
+
+function updateGridScale() {
+  const scaleW = width * 0.9 / (gridSize * 36);
+  const scaleH = height * 0.72 / (gridSize * 28 + 11 * 18);
+  const scale = Math.min(1, scaleW, scaleH);
+  tileW = 36 * scale;
+  tileH = 28 * scale;
+  tileZ = 18 * scale;
+
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (let x = 0; x < gridSize; x++) {
+    for (let y = 0; y < gridSize; y++) {
+      const sy = (x + y) * tileH / 2 - (5 + terrain[x][y]) * tileZ;
+      minY = Math.min(minY, sy - tileH / 2);
+      maxY = Math.max(maxY, sy + tileH / 2 + (terrain[x][y] + 1) * tileZ);
+    }
+  }
+
+  offsetY = height / 2 - (minY + maxY) / 2;
+}
+
+function changeGridSize() {
+  gridIndex = (gridIndex + 1) % gridSizes.length;
+  gridSize = gridSizes[gridIndex];
+  terrain = createTerrain(gridSize);
+  water = Array.from({ length: gridSize }, () => Array(gridSize).fill(0));
+  waterVisible = Array.from({ length: gridSize }, () => Array(gridSize).fill(false));
+  waterTimer = 0;
+  totalVolume = 0;
+  updateGridScale();
+}
+
 function setup() {
   createCanvas(windowWidth, windowHeight);
+  updateGridScale();
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  updateGridScale();
 }
 
 function draw() {
@@ -65,7 +117,7 @@ function draw() {
   background(0);
 
   push();
-  translate(width / 2, height / 2 - 30);
+  translate(width / 2, offsetY);
 
   for (let sum = 0; sum < gridSize * 2 - 1; sum++) {
     for (let x = 0; x < gridSize; x++) {
@@ -89,50 +141,63 @@ function draw() {
 
   noStroke();
   fill(180);
-  textSize(15);
-
+  textSize(19);
+    fill(200,50,255);
   if (blockMode === 1) {
-    text("BUILD mode: click/drag to add blocks. Press D for DELETE, W for WATER, or U for SPONGE.", 16, 20);
+    text("You are currently in BUILD mode: click/drag to add blocks.", 16, 50);
   } else if (blockMode === 2) {
-    text("DELETE mode: click/drag to remove blocks. Press B for BUILD, W for WATER, or U for SPONGE.", 16, 20);
+    text("You are currently in DELETE mode: click/drag to remove blocks.", 16, 50);
   } else if (unwater) {
-    text("SPONGE mode: click/drag to absorb water. Press W for WATER, B for BUILD, or D for DELETE.", 16, 20);
+    text("You are currently in SPONGE mode: click/drag to absorb fluid.", 16, 50);
   } else {
-    text("WATER mode: click/drag to pour water. Press U for SPONGE, B for BUILD, or D for DELETE.", 16, 20);
+    text("You are currently in WATER mode: click/drag to pour fluid.", 16, 50);
+  }
+  text("water volume: " + floor(totalVolume * 10) / 10 + " units", 16, 80);
+
+  if(guide){
+  fill(255);
+
+  text("SPACE: clear water", 16, 110);
+  text("R: Reset terrain", 16, 140);
+  text("G: Change grid size ("+gridSize+"x"+gridSize+"), will reset all", 16, 170);
+  text("M: Change viscosity (Change fluid)", 16, 220);
+  text("B: Build blocks on terrain", 16, 250);
+  text("D: Delete blocks on terrain", 16, 280);
+  text("U: Absorb fluid", 16, 310);
+  text("W: Pour fluid", 16, 340);
+  }
+  else{
+  text("Press A for guide", 16, 110);
   }
 
-  text("SPACE: clear water    R: reset terrain", 16, 40);
-  text("there is " + floor(totalVolume * 10) / 10 + " cubic meters of water", 16, 60);
-  text("Press M to change viscosity", 16, 100);
+  text("mizu emu - by @ninew - crescent hackclub - emulator", width-370, height-20);
+  if (menu) {
+    drawCube(width-260, 230, 20, fluidColors[selection]);
 
-  text("mizu emu - by @ninew - crescent hackclub - emulator", width - 350, height - 20);
-  
-  if(menu){
-    if(selection==0){
-    text("liquid hydrogen", windowWidth/2, 140);
-    textSize(10);
-    text("viscosity multiplier: 0.02x", windowWidth/2, 155);
-    text("let the whole temperature be -253 degrees C", windowWidth/2, 168);
-    }else if(selection==1){
-    text("acetone", windowWidth/2, 140);
-    textSize(10);
-    text("viscosity multiplier: 0.33x", windowWidth/2, 155);
-    }else if(selection==2){
-    text("water", windowWidth/2, 140);
-    textSize(10);
-    text("viscosity multiplier: 1x", windowWidth/2, 155);
-    }else if(selection==3){
-    text("olive oil", windowWidth/2, 140);
-    textSize(10);
-    text("viscosity multiplier: 40x", windowWidth/2, 155);
-    }else if(selection==3){
-    text("maple syrup", windowWidth/2, 140);
-    textSize(10);
-    text("viscosity multiplier: 100x", windowWidth/2, 155);
-    }else if(selection==3){
-    text("honey", windowWidth/2, 140);
-    textSize(10);
-    text("viscosity multiplier: 8000x", windowWidth/2, 155);
+    if (selection === 0) {
+      text("liquid hydrogen", width-200, 210);
+      textSize(15);
+      text("viscosity multiplier: 0.02x", width-200, 230);
+    } else if (selection === 1) {
+      text("acetone", width-200, 210);
+      textSize(15);
+      text("viscosity multiplier: 0.33x", width-200, 230);
+    } else if (selection === 2) {
+      text("water", width-200, 210);
+      textSize(15);
+      text("viscosity multiplier: 1x", width-200, 230);
+    } else if (selection === 3) {
+      text("olive oil", width-200, 210);
+      textSize(15);
+      text("viscosity multiplier: 40x", width-200, 230);
+    } else if (selection === 4) {
+      text("maple syrup", width-200, 210);
+      textSize(15);
+      text("viscosity multiplier: 100x", width-200, 230);
+    } else if (selection === 5) {
+      text("honey", width-200, 210);
+      textSize(15);
+      text("viscosity multiplier: 8000x",width-200, 230);
     }
   }
 }
@@ -210,9 +275,12 @@ function moveWater(transfers, outgoing, x, y, nx, ny) {
   }
 
   const count = outlets(sx, sy);
+  const viscosity = Math.max(0.02, viscosityValues[selection]);
+  const flowRate = 0.08 / Math.sqrt(viscosity);
+
   const amount = Math.min(
     water[sx][sy] * 0.9,
-    drop * 0.08 * (4 / count)
+    drop * flowRate * (4 / count)
   );
 
   if (amount <= 0) return;
@@ -223,7 +291,7 @@ function moveWater(transfers, outgoing, x, y, nx, ny) {
 
 function makeWater() {
   const transfers = [];
-
+  
   const outgoing = Array.from(
     { length: gridSize },
     () => Array(gridSize).fill(0)
@@ -278,7 +346,7 @@ function mouseDragged() {
 
 function findTile(px, py) {
   const mx = px - width / 2;
-  const my = py - (height / 2 - 30);
+  const my = py - offsetY;
 
   let selected = null;
   let closest = 999999;
@@ -320,8 +388,10 @@ function tile() {
 
   if (blockMode === 1) {
     terrain[x][y] = Math.min(6, terrain[x][y] + 1);
+    updateGridScale();
   } else if (blockMode === 2) {
     terrain[x][y] = Math.max(0, terrain[x][y] - 1);
+    updateGridScale();
   } else if (!unwater) {
     water[x][y] = Math.min(3.5, water[x][y] + 1);
   } else {
@@ -382,7 +452,9 @@ function drawWater(x, y, amount, z) {
 
   const w = tileW / 2;
   const h = tileH / 2;
-  const alpha = Math.min(235, 95 + amount * 45);
+
+  const fluidColor = fluidColors[selection];
+  const alpha = Math.min(fluidOpacity[selection], 95 + amount * 45);
 
   const rightSurface = x < gridSize - 1
     ? terrain[x + 1][y] + (waterVisible[x + 1][y] ? water[x + 1][y] : 0)
@@ -400,7 +472,8 @@ function drawWater(x, y, amount, z) {
   if (leftDrop > 0.0001) {
     const depth = leftDrop * tileZ;
 
-    fill(9, 70, 91, alpha);
+    fill(fluidColor[0] * 0.42, fluidColor[1] * 0.42, fluidColor[2] * 0.42, alpha);
+
     quad(
       sx - w, sy,
       sx, sy + h,
@@ -412,7 +485,8 @@ function drawWater(x, y, amount, z) {
   if (rightDrop > 0.0001) {
     const depth = rightDrop * tileZ;
 
-    fill(11, 93, 118, alpha);
+    fill(fluidColor[0] * 0.62, fluidColor[1] * 0.62, fluidColor[2] * 0.62, alpha);
+
     quad(
       sx, sy + h,
       sx + w, sy,
@@ -421,7 +495,8 @@ function drawWater(x, y, amount, z) {
     );
   }
 
-  fill(19, 126, 157, alpha);
+  fill(fluidColor[0], fluidColor[1], fluidColor[2], alpha);
+
   quad(
     sx, sy - h,
     sx + w, sy,
@@ -430,7 +505,13 @@ function drawWater(x, y, amount, z) {
   );
 
   if (amount > 0.25) {
-    stroke(117, 203, 218, Math.min(180, amount * 55));
+    stroke(
+      Math.min(255, fluidColor[0] + 55),
+      Math.min(255, fluidColor[1] + 55),
+      Math.min(255, fluidColor[2] + 55),
+      Math.min(alpha, amount * 55)
+    );
+
     strokeWeight(1);
 
     line(
@@ -446,6 +527,44 @@ function drawWater(x, y, amount, z) {
 
 function fillRgb(color) {
   fill(color[0], color[1], color[2]);
+}
+
+function drawCube(x, y, size, color) {
+  const alpha = fluidOpacity[selection];
+
+  noStroke();
+
+  fill(
+    Math.min(255, color[0] * 1.18),
+    Math.min(255, color[1] * 1.18),
+    Math.min(255, color[2] * 1.18),
+    alpha
+  );
+
+  quad(
+    x, y - size * 0.65,
+    x + size, y - size * 0.15,
+    x, y + size * 0.35,
+    x - size, y - size * 0.15
+  );
+
+  fill(color[0] * 0.62, color[1] * 0.62, color[2] * 0.62, alpha);
+
+  quad(
+    x - size, y - size * 0.15,
+    x, y + size * 0.35,
+    x, y + size * 1.15,
+    x - size, y + size * 0.65
+  );
+
+  fill(color[0] * 0.82, color[1] * 0.82, color[2] * 0.82, alpha);
+
+  quad(
+    x, y + size * 0.35,
+    x + size, y - size * 0.15,
+    x + size, y + size * 0.65,
+    x, y + size * 1.15
+  );
 }
 
 function waterVolume() {
@@ -487,6 +606,7 @@ function drawMap(x, y, z) {
 
   const sx = (x - y) * tileW / 2;
   const sy = (x + y) * tileH / 2 - (z + elevation) * tileZ;
+
   const w = tileW / 2;
   const h = tileH / 2;
   const depth = (elevation + 1) * tileZ;
@@ -495,6 +615,7 @@ function drawMap(x, y, z) {
   strokeWeight(1);
 
   fillRgb(topColors[level]);
+
   quad(
     sx, sy - h,
     sx + w, sy,
@@ -503,6 +624,7 @@ function drawMap(x, y, z) {
   );
 
   fillRgb(leftColors[level]);
+
   quad(
     sx - w, sy,
     sx, sy + h,
@@ -511,6 +633,7 @@ function drawMap(x, y, z) {
   );
 
   fillRgb(rightColors[level]);
+
   quad(
     sx, sy + h,
     sx + w, sy,
@@ -538,7 +661,7 @@ function keyPressed(event) {
         const center = (gridSize - 1) / 2;
         const dist = Math.hypot(x - center, y - center);
 
-        terrain[x][y] = Math.min(2, Math.floor(Math.max(0, dist - 1) / 3.7));
+        terrain[x][y] = Math.min(2, Math.floor(Math.max(0, dist - 1) / (3.7 * gridSize / 18)));
         water[x][y] = 0;
         waterVisible[x][y] = false;
       }
@@ -547,6 +670,7 @@ function keyPressed(event) {
     waterTimer = 0;
     blockMode = 0;
     unwater = false;
+    updateGridScale();
   } else if (event.code === "Space") {
     event.preventDefault();
 
@@ -556,19 +680,18 @@ function keyPressed(event) {
         waterVisible[x][y] = false;
       }
     }
-  } else if (event.code === "KeyM"){
-    menu=!menu;
-    selection=0;
-  } else if (event.code === "ArrowRight"&&menu&&unpress){
-    selection++;
-    unpress=false;
-  } else if (event.code === "ArrowLeft"&&menu&&unpress){
-    selection--;
-    unpress=false;
-  } else {
-    unpress=true;
+  } else if (event.code === "KeyG") {
+    changeGridSize();
+  } else if (event.code === "KeyM") {
+    menu = !menu;
+  } else if (event.code === "ArrowRight" && menu) {
+    selection = (selection + 1) % 6;
+  } else if (event.code === "ArrowLeft" && menu) {
+    selection = (selection + 5) % 6;
+  } else if (event.code === "KeyA"){
+    guide=!guide;
   }
-  }
+}
 </script>
 </body>
 </html>
